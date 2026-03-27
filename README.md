@@ -1,6 +1,6 @@
 # Milady Amplifier
 
-*protecting your timeline from the egregore since 2026*
+_enhancing your timeline from the egregore since 2026_
 
 ![hero](assets/hero.png)
 
