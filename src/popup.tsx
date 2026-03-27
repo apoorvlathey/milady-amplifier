@@ -77,15 +77,7 @@ const styles = `
   }
 
   .header {
-    margin-bottom: 14px;
-  }
-
-  .eyebrow {
-    margin: 0 0 2px;
-    color: var(--text-faint);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    margin-bottom: 16px;
   }
 
   h1 {
@@ -249,6 +241,18 @@ const styles = `
     display: grid;
   }
 
+  .account-group + .account-group {
+    margin-top: 16px;
+  }
+
+  .account-group-title {
+    margin: 0 0 6px;
+    color: var(--text-faint);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .account-row {
     display: block;
     width: 100%;
@@ -298,6 +302,12 @@ function App() {
   const [collectedAvatars, setCollectedAvatars] = createSignal<CollectedAvatarMap>({});
 
   const sortedAccounts = createMemo(() => Object.values(matchedAccounts()).sort(compareAccounts));
+  const whitelistedAccounts = createMemo(() =>
+    sortedAccounts().filter((account) => settings().whitelistHandles.includes(account.handle)),
+  );
+  const filteredAccounts = createMemo(() =>
+    sortedAccounts().filter((account) => !settings().whitelistHandles.includes(account.handle)),
+  );
   const totalAvatarSightings = createMemo(() =>
     Object.values(collectedAvatars()).reduce((total, avatar) => total + avatar.seenCount, 0),
   );
@@ -388,9 +398,7 @@ function App() {
       <style>{styles}</style>
       <main class="popup">
         <header class="header">
-          <p class="eyebrow">Extension</p>
           <h1>Milady Shrinkifier</h1>
-          <p class="lede">Local avatar filtering with the bundled Milady classifier.</p>
         </header>
 
         <nav class="tabs" aria-label="Popup sections">
@@ -467,39 +475,58 @@ function App() {
             <div class="panel-header">
               <div>
                 <h2 class="panel-title">Matched Accounts</h2>
-                <p class="section-note">Click a handle to strike it through and bypass filtering.</p>
+                <p class="section-note">Click a handle to move it in or out of the whitelist.</p>
               </div>
             </div>
             <Show
               when={sortedAccounts().length > 0}
               fallback={<p class="empty">No matched accounts yet.</p>}
             >
-              <div class="account-list">
-                <For each={sortedAccounts()}>
-                  {(account) => {
-                    const isWhitelisted = () => settings().whitelistHandles.includes(account.handle);
-                    return (
-                      <button
-                        type="button"
-                        class="account-row"
-                        data-whitelisted={String(isWhitelisted())}
-                        onClick={() => void toggleWhitelist(account.handle)}
-                        title={
-                          isWhitelisted()
-                            ? `@${account.handle} bypasses the filter`
-                            : `Click to let @${account.handle} bypass the filter`
-                        }
-                      >
-                        <p class="account-handle">@{account.handle}</p>
-                        <p class="account-note">
-                          {formatNumber(account.postsMatched)} matched posts
-                          {isWhitelisted() ? ", bypassed" : ""}
-                        </p>
-                      </button>
-                    );
-                  }}
-                </For>
-              </div>
+              <>
+                <Show when={whitelistedAccounts().length > 0}>
+                  <div class="account-group">
+                    <p class="account-group-title">Whitelist</p>
+                    <div class="account-list">
+                      <For each={whitelistedAccounts()}>
+                        {(account) => (
+                          <button
+                            type="button"
+                            class="account-row"
+                            data-whitelisted="true"
+                            onClick={() => void toggleWhitelist(account.handle)}
+                            title={`@${account.handle} bypasses the filter`}
+                          >
+                            <p class="account-handle">@{account.handle}</p>
+                            <p class="account-note">{formatNumber(account.postsMatched)} matched posts, bypassed</p>
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </Show>
+
+                <Show when={filteredAccounts().length > 0}>
+                  <div class="account-group">
+                    <p class="account-group-title">Detected</p>
+                    <div class="account-list">
+                      <For each={filteredAccounts()}>
+                        {(account) => (
+                          <button
+                            type="button"
+                            class="account-row"
+                            data-whitelisted="false"
+                            onClick={() => void toggleWhitelist(account.handle)}
+                            title={`Click to let @${account.handle} bypass the filter`}
+                          >
+                            <p class="account-handle">@{account.handle}</p>
+                            <p class="account-note">{formatNumber(account.postsMatched)} matched posts</p>
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </Show>
+              </>
             </Show>
           </section>
         </Show>
