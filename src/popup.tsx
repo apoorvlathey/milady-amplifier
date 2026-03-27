@@ -172,6 +172,12 @@ const styles = `
     gap: 12px;
   }
 
+  .panel-actions-bottom {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+  }
+
   .action-button {
     border: 0;
     padding: 0;
@@ -476,14 +482,6 @@ function App() {
 
         <Show when={tab() === "stats"}>
           <section class="panel">
-            <div class="panel-header">
-              <div />
-              <div class="actions">
-                <button type="button" class="action-button" onClick={() => void handleResetStats()}>
-                  Reset
-                </button>
-              </div>
-            </div>
             <dl class="stats-grid">
               <div><dt>Seen</dt><dd>{formatNumber(stats().tweetsScanned)}</dd></div>
               <div><dt>Matched</dt><dd>{formatNumber(stats().postsMatched)}</dd></div>
@@ -492,6 +490,11 @@ function App() {
               <div><dt>Errors</dt><dd>{formatNumber(stats().errors)}</dd></div>
               <div><dt>Last match</dt><dd>{lastHitLabel()}</dd></div>
             </dl>
+            <div class="panel-actions-bottom">
+              <button type="button" class="action-button" onClick={() => void handleResetStats()}>
+                Reset
+              </button>
+            </div>
           </section>
         </Show>
 
