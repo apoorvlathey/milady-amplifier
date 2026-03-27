@@ -278,6 +278,26 @@ const styles = `
     display: grid;
   }
 
+  .account-search {
+    width: 100%;
+    margin: 0 0 14px;
+    border: 1px solid rgba(247, 241, 232, 0.12);
+    border-radius: 8px;
+    background: rgba(247, 241, 232, 0.04);
+    color: var(--text);
+    padding: 9px 11px;
+    outline: none;
+  }
+
+  .account-search::placeholder {
+    color: var(--text-faint);
+  }
+
+  .account-search:focus {
+    border-color: rgba(255, 109, 74, 0.5);
+    background: rgba(247, 241, 232, 0.06);
+  }
+
   .account-group + .account-group {
     margin-top: 16px;
   }
@@ -331,17 +351,33 @@ const styles = `
 
 function App() {
   const [tab, setTab] = createSignal<TabId>("stats");
+  const [accountSearch, setAccountSearch] = createSignal("");
   const [settings, setSettings] = createSignal(DEFAULT_SETTINGS);
   const [stats, setStats] = createSignal<DetectionStats>(emptyStats());
   const [matchedAccounts, setMatchedAccounts] = createSignal<MatchedAccountMap>({});
   const [collectedAvatars, setCollectedAvatars] = createSignal<CollectedAvatarMap>({});
 
   const sortedAccounts = createMemo(() => Object.values(matchedAccounts()).sort(compareAccounts));
+  const accountSearchTerm = createMemo(() => accountSearch().trim().toLowerCase());
+  const matchesAccountSearch = (account: MatchedAccount) => {
+    const query = accountSearchTerm();
+    if (!query) {
+      return true;
+    }
+    return (
+      account.handle.toLowerCase().includes(query) ||
+      (account.displayName?.toLowerCase().includes(query) ?? false)
+    );
+  };
   const whitelistedAccounts = createMemo(() =>
-    sortedAccounts().filter((account) => settings().whitelistHandles.includes(account.handle)),
+    sortedAccounts().filter(
+      (account) => settings().whitelistHandles.includes(account.handle) && matchesAccountSearch(account),
+    ),
   );
   const filteredAccounts = createMemo(() =>
-    sortedAccounts().filter((account) => !settings().whitelistHandles.includes(account.handle)),
+    sortedAccounts().filter(
+      (account) => !settings().whitelistHandles.includes(account.handle) && matchesAccountSearch(account),
+    ),
   );
   const matchRateLabel = createMemo(() => {
     const seen = stats().tweetsScanned;
@@ -514,55 +550,68 @@ function App() {
                 <p class="section-note">Tap to exempt or un-exempt.</p>
               </div>
             </div>
+            <input
+              class="account-search"
+              type="search"
+              value={accountSearch()}
+              onInput={(event) => setAccountSearch(event.currentTarget.value)}
+              placeholder="Search handles"
+              spellcheck={false}
+            />
             <Show
               when={sortedAccounts().length > 0}
               fallback={<p class="empty">Nothing caught yet.</p>}
             >
-              <>
-                <Show when={whitelistedAccounts().length > 0}>
-                  <div class="account-group">
-                    <p class="account-group-title">Exempt</p>
-                    <div class="account-list">
-                      <For each={whitelistedAccounts()}>
-                        {(account) => (
-                          <button
-                            type="button"
-                            class="account-row"
-                            data-whitelisted="true"
-                            onClick={() => void toggleWhitelist(account.handle)}
-                            title={`@${account.handle} is exempt`}
-                          >
-                            <p class="account-handle">@{account.handle}</p>
-                            <p class="account-note">{formatNumber(account.postsMatched)} hits, exempt</p>
-                          </button>
-                        )}
-                      </For>
+              <Show
+                when={whitelistedAccounts().length > 0 || filteredAccounts().length > 0}
+                fallback={<p class="empty">No matching accounts.</p>}
+              >
+                <>
+                  <Show when={whitelistedAccounts().length > 0}>
+                    <div class="account-group">
+                      <p class="account-group-title">Exempt</p>
+                      <div class="account-list">
+                        <For each={whitelistedAccounts()}>
+                          {(account) => (
+                            <button
+                              type="button"
+                              class="account-row"
+                              data-whitelisted="true"
+                              onClick={() => void toggleWhitelist(account.handle)}
+                              title={`@${account.handle} is exempt`}
+                            >
+                              <p class="account-handle">@{account.handle}</p>
+                              <p class="account-note">{formatNumber(account.postsMatched)} hits, exempt</p>
+                            </button>
+                          )}
+                        </For>
+                      </div>
                     </div>
-                  </div>
-                </Show>
+                  </Show>
 
-                <Show when={filteredAccounts().length > 0}>
-                  <div class="account-group">
-                    <p class="account-group-title">Caught</p>
-                    <div class="account-list">
-                      <For each={filteredAccounts()}>
-                        {(account) => (
-                          <button
-                            type="button"
-                            class="account-row"
-                            data-whitelisted="false"
-                            onClick={() => void toggleWhitelist(account.handle)}
-                            title={`Exempt @${account.handle}`}
-                          >
-                            <p class="account-handle">@{account.handle}</p>
-                            <p class="account-note">{formatNumber(account.postsMatched)} hits</p>
-                          </button>
-                        )}
-                      </For>
+                  <Show when={filteredAccounts().length > 0}>
+                    <div class="account-group">
+                      <p class="account-group-title">Caught</p>
+                      <div class="account-list">
+                        <For each={filteredAccounts()}>
+                          {(account) => (
+                            <button
+                              type="button"
+                              class="account-row"
+                              data-whitelisted="false"
+                              onClick={() => void toggleWhitelist(account.handle)}
+                              title={`Exempt @${account.handle}`}
+                            >
+                              <p class="account-handle">@{account.handle}</p>
+                              <p class="account-note">{formatNumber(account.postsMatched)} hits</p>
+                            </button>
+                          )}
+                        </For>
+                      </div>
                     </div>
-                  </div>
-                </Show>
-              </>
+                  </Show>
+                </>
+              </Show>
             </Show>
           </section>
         </Show>
