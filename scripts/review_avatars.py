@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,15 @@ class LabelPayload(BaseModel):
     sha256: str
     label: str
     note: str | None = None
+
+
+class BatchLabelItem(BaseModel):
+    sha256: str
+    label: str
+
+
+class BatchLabelPayload(BaseModel):
+    items: list[BatchLabelItem]
 
 
 def parse_args() -> argparse.Namespace:
@@ -82,6 +92,22 @@ def get_queue(
             "index": bounded_index,
             "total": len(items),
             "item": items[bounded_index].to_dict(),
+        }
+    )
+
+
+@app.get("/api/batch")
+def get_batch(
+    queue: str = Query("unlabeled"),
+    limit: int = Query(9, ge=1, le=25),
+) -> JSONResponse:
+    connection = connect_db()
+    items = queue_items(load_review_items(connection), queue)
+    return JSONResponse(
+        {
+            "queue": queue,
+            "total": len(items),
+            "items": [item.to_dict() for item in items[:limit]],
         }
     )
 
@@ -158,8 +184,9 @@ def label_avatar(payload: LabelPayload) -> JSONResponse:
           previous_review_notes,
           new_label,
           new_review_notes,
+          batch_id,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """,
         (
             payload.sha256,
@@ -169,6 +196,7 @@ def label_avatar(payload: LabelPayload) -> JSONResponse:
             existing["review_notes"],
             payload.label,
             payload.note,
+            None,
         ),
     )
     connection.execute(
@@ -187,12 +215,117 @@ def label_avatar(payload: LabelPayload) -> JSONResponse:
     return JSONResponse({"ok": True})
 
 
+@app.post("/api/batch-label")
+def batch_label(payload: BatchLabelPayload) -> JSONResponse:
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="Batch is empty")
+    batch_id = str(uuid.uuid4())
+    connection = connect_db()
+
+    for item in payload.items:
+        if item.label not in LABELS:
+            raise HTTPException(status_code=400, detail=f"Unsupported label: {item.label}")
+        existing = connection.execute(
+            """
+            SELECT sha256, label, label_source, labeled_at, review_notes
+            FROM images
+            WHERE sha256 = ?
+            """,
+            (item.sha256,),
+        ).fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail=f"Unknown avatar sha256: {item.sha256}")
+
+        connection.execute(
+            """
+            INSERT INTO label_events (
+              image_sha256,
+              previous_label,
+              previous_label_source,
+              previous_labeled_at,
+              previous_review_notes,
+              new_label,
+              new_review_notes,
+              batch_id,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            (
+                item.sha256,
+                existing["label"],
+                existing["label_source"],
+                existing["labeled_at"],
+                existing["review_notes"],
+                item.label,
+                None,
+                batch_id,
+            ),
+        )
+        connection.execute(
+            """
+            UPDATE images
+            SET label = ?,
+                label_source = 'manual',
+                labeled_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE sha256 = ?
+            """,
+            (item.label, item.sha256),
+        )
+
+    connection.commit()
+    return JSONResponse({"ok": True, "batchId": batch_id, "count": len(payload.items)})
+
+
 @app.post("/api/undo")
 def undo_last_label() -> JSONResponse:
     connection = connect_db()
     event = latest_label_event(connection)
     if event is None:
         raise HTTPException(status_code=409, detail="No label action to undo")
+
+    batch_id = event["batch_id"]
+    if batch_id:
+        events = connection.execute(
+            """
+            SELECT *
+            FROM label_events
+            WHERE batch_id = ?
+            ORDER BY id DESC
+            """,
+            (batch_id,),
+        ).fetchall()
+        undone_sha256 = []
+        for batch_event in events:
+            connection.execute(
+                """
+                UPDATE images
+                SET label = ?,
+                    label_source = ?,
+                    labeled_at = ?,
+                    review_notes = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE sha256 = ?
+                """,
+                (
+                    batch_event["previous_label"],
+                    batch_event["previous_label_source"],
+                    batch_event["previous_labeled_at"],
+                    batch_event["previous_review_notes"],
+                    batch_event["image_sha256"],
+                ),
+            )
+            undone_sha256.append(str(batch_event["image_sha256"]))
+        connection.execute("DELETE FROM label_events WHERE batch_id = ?", (batch_id,))
+        connection.commit()
+        return JSONResponse(
+            {
+                "ok": True,
+                "batchId": str(batch_id),
+                "undoneSha256List": undone_sha256,
+                "undoneSha256": undone_sha256[0] if undone_sha256 else None,
+            }
+        )
 
     connection.execute(
         """
@@ -322,6 +455,56 @@ INDEX_HTML = """<!doctype html>
         color: #666;
         font-size: 12px;
         margin: 10px 0 0;
+      }
+      .batch-panel {
+        display: grid;
+        gap: 12px;
+      }
+      .batch-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .batch-tile {
+        display: block;
+        padding: 0;
+        border: 1px solid #d7d7d2;
+        background: white;
+      }
+      .batch-tile[data-selected="true"] {
+        border-color: #0f62fe;
+        box-shadow: 0 0 0 1px #0f62fe;
+      }
+      .batch-tile[data-label="milady"] {
+        background: #fff2e8;
+      }
+      .batch-tile[data-label="not_milady"] {
+        background: #effaf1;
+      }
+      .batch-tile[data-label="unclear"] {
+        background: #fff8cc;
+      }
+      .batch-tile img {
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+        display: block;
+      }
+      .batch-caption {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      .batch-badge {
+        font-weight: 700;
+      }
+      .batch-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       .grid-toolbar {
         display: flex;
@@ -456,6 +639,19 @@ INDEX_HTML = """<!doctype html>
         <h2>Metadata</h2>
         <dl id="metadata"></dl>
       </section>
+      <section class="panel">
+        <div class="grid-toolbar">
+          <h2>Batch mode</h2>
+          <div class="batch-actions">
+            <button id="batch-refresh">Load batch</button>
+            <button id="batch-commit">Enter: commit batch</button>
+          </div>
+        </div>
+        <div class="hint">Numpad 7/8/9 4/5/6 1/2/3 cycles each tile. Click also cycles. Enter commits.</div>
+        <div id="batch-panel" class="batch-panel">
+          <div id="batch-grid" class="batch-grid"></div>
+        </div>
+      </section>
       <section class="panel full-width">
         <div class="grid-toolbar">
           <h2>Labeled grid</h2>
@@ -482,9 +678,26 @@ INDEX_HTML = """<!doctype html>
       const labeledFilter = document.getElementById("labeled-filter");
       const labeledGrid = document.getElementById("labeled-grid");
       const labeledGridEmpty = document.getElementById("labeled-grid-empty");
+      const batchGrid = document.getElementById("batch-grid");
+      const batchRefresh = document.getElementById("batch-refresh");
+      const batchCommit = document.getElementById("batch-commit");
 
       let index = 0;
       let selectedSha = null;
+      let batchItems = [];
+      let selectedBatchIndex = 0;
+      const batchLabelOrder = ["not_milady", "milady", "unclear"];
+      const numpadIndexMap = {
+        Numpad7: 0,
+        Numpad8: 1,
+        Numpad9: 2,
+        Numpad4: 3,
+        Numpad5: 4,
+        Numpad6: 5,
+        Numpad1: 6,
+        Numpad2: 7,
+        Numpad3: 8,
+      };
 
       async function loadSummary() {
         const currentQueue = queueSelect.value || "unlabeled";
@@ -531,6 +744,80 @@ INDEX_HTML = """<!doctype html>
         index = payload.index;
         const item = payload.item;
         renderItem(item, `${payload.queue} ${payload.index + 1}/${payload.total}`);
+      }
+
+      async function loadBatch() {
+        const queue = queueSelect.value || "unlabeled";
+        const response = await fetch(`/api/batch?queue=${encodeURIComponent(queue)}&limit=9`);
+        const payload = await response.json();
+        batchItems = payload.items.map((item, index) => ({
+          item,
+          assignedLabel: "not_milady",
+          position: index,
+        }));
+        selectedBatchIndex = 0;
+        renderBatch();
+      }
+
+      function renderBatch() {
+        batchGrid.innerHTML = "";
+        for (const [index, entry] of batchItems.entries()) {
+          const tile = document.createElement("button");
+          tile.type = "button";
+          tile.className = "batch-tile";
+          tile.dataset.selected = String(index === selectedBatchIndex);
+          tile.dataset.label = entry.assignedLabel;
+          tile.innerHTML = `
+            <img src="/api/image/${entry.item.sha256}" alt="${entry.item.sha256}" />
+            <div class="batch-caption">
+              <span>${index + 1}</span>
+              <span class="batch-badge">${shortLabel(entry.assignedLabel)}</span>
+            </div>
+          `;
+          tile.addEventListener("click", async () => {
+            selectedBatchIndex = index;
+            cycleBatchLabel(index);
+          });
+          batchGrid.append(tile);
+        }
+      }
+
+      function shortLabel(label) {
+        if (label === "milady") return "M";
+        if (label === "unclear") return "U";
+        return "N";
+      }
+
+      function cycleBatchLabel(index) {
+        const entry = batchItems[index];
+        if (!entry) {
+          return;
+        }
+        const current = batchLabelOrder.indexOf(entry.assignedLabel);
+        entry.assignedLabel = batchLabelOrder[(current + 1) % batchLabelOrder.length];
+        renderBatch();
+      }
+
+      async function commitBatch() {
+        if (batchItems.length === 0) {
+          return;
+        }
+        await fetch("/api/batch-label", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            items: batchItems.map((entry) => ({
+              sha256: entry.item.sha256,
+              label: entry.assignedLabel,
+            })),
+          }),
+        });
+        selectedSha = null;
+        await loadSummary();
+        await loadHistory();
+        await loadLabeledGrid();
+        await loadBatch();
+        await loadItem();
       }
 
       function renderItem(item, heading) {
@@ -667,6 +954,7 @@ INDEX_HTML = """<!doctype html>
         await loadSummary();
         await loadHistory();
         await loadLabeledGrid();
+        await loadBatch();
         await loadItem();
       }
 
@@ -676,6 +964,8 @@ INDEX_HTML = """<!doctype html>
         await loadItem();
       });
       labeledFilter.addEventListener("change", loadLabeledGrid);
+      batchRefresh.addEventListener("click", loadBatch);
+      batchCommit.addEventListener("click", commitBatch);
       skip.addEventListener("click", async () => {
         selectedSha = null;
         index += 1;
@@ -696,11 +986,22 @@ INDEX_HTML = """<!doctype html>
           index += 1;
           await loadItem();
         }
-        if (event.key.toLowerCase() === "z") await undoLast();
+        if (event.key.toLowerCase() === "z") {
+          await undoLast();
+          await loadBatch();
+        }
+        if (event.code in numpadIndexMap) {
+          selectedBatchIndex = numpadIndexMap[event.code];
+          cycleBatchLabel(selectedBatchIndex);
+        }
+        if (event.key === "Enter" || event.code === "NumpadEnter") {
+          await commitBatch();
+        }
       });
       loadSummary().then(async () => {
         await loadHistory();
         await loadLabeledGrid();
+        await loadBatch();
         await loadItem();
       });
     </script>
@@ -712,7 +1013,7 @@ INDEX_HTML = """<!doctype html>
 def recent_label_events(connection, limit: int) -> list[Any]:
     return connection.execute(
         """
-        SELECT id, image_sha256, previous_label, new_label, created_at
+        SELECT id, image_sha256, previous_label, new_label, created_at, batch_id
         FROM label_events
         ORDER BY created_at DESC, id DESC
         LIMIT ?

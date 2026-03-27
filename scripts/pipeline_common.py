@@ -201,7 +201,18 @@ def init_db(connection: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_label_events_created_at ON label_events(created_at DESC, id DESC);
         """
     )
+    ensure_column(connection, "label_events", "batch_id", "TEXT")
     connection.commit()
+
+
+def ensure_column(connection: sqlite3.Connection, table_name: str, column_name: str, column_definition: str) -> None:
+    columns = {
+        str(row["name"])
+        for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name in columns:
+        return
+    connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
 
 
 def read_json_file(path: Path) -> dict[str, Any]:
