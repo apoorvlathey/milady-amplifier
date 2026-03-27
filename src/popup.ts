@@ -455,7 +455,34 @@ function formatNumber(value: number): string {
 
 function formatDate(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Never" : date.toLocaleString();
+  if (Number.isNaN(date.getTime())) {
+    return "Never";
+  }
+  return formatRelativeTime(date);
+}
+
+function formatRelativeTime(date: Date): string {
+  const deltaMs = date.getTime() - Date.now();
+  const absMs = Math.abs(deltaMs);
+  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+  const units: Array<{ unit: Intl.RelativeTimeFormatUnit; ms: number }> = [
+    { unit: "year", ms: 365 * 24 * 60 * 60 * 1000 },
+    { unit: "month", ms: 30 * 24 * 60 * 60 * 1000 },
+    { unit: "week", ms: 7 * 24 * 60 * 60 * 1000 },
+    { unit: "day", ms: 24 * 60 * 60 * 1000 },
+    { unit: "hour", ms: 60 * 60 * 1000 },
+    { unit: "minute", ms: 60 * 1000 },
+    { unit: "second", ms: 1000 },
+  ];
+
+  for (const { unit, ms } of units) {
+    if (absMs >= ms || unit === "second") {
+      return formatter.format(Math.round(deltaMs / ms), unit);
+    }
+  }
+
+  return "just now";
 }
 
 function normalizeStats(value: unknown): DetectionStats {
