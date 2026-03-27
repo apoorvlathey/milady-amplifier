@@ -419,7 +419,7 @@ wheels = [
 ]
 
 [[package]]
-name = "milady-shrinkifier"
+name = "milady-amplifier"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

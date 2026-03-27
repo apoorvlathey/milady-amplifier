@@ -27,7 +27,7 @@ from mobilenet_common import (
 )
 from pipeline_common import MODEL_RUN_ROOT, SPLIT_ROOT
 
-DEFAULT_WANDB_PROJECT = "milady-shrinkifier"
+DEFAULT_WANDB_PROJECT = "milady-amplifier"
 DEFAULT_WANDB_ENTITY = "banteg-"
 
 

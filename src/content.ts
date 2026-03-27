@@ -32,7 +32,7 @@ import type {
   WorkerResponse,
 } from "./shared/types";
 
-const STYLE_ID = "milady-shrinkifier-style";
+const STYLE_ID = "milady-amplifier-style";
 const ARTICLE_SELECTOR = 'article[data-testid="tweet"]';
 const NOTIFICATION_SELECTOR = 'article[data-testid="notification"]';
 const RESCAN_INTERVAL_MS = 1000;
@@ -123,16 +123,16 @@ async function processTweet(tweet: HTMLElement): Promise<void> {
     const avatar = findAvatar(tweet);
     const author = findAuthor(tweet);
     if (!avatar) {
-      tweet.dataset.miladyShrinkifierState = "miss";
-      delete tweet.dataset.miladyShrinkifierDebug;
+      tweet.dataset.miladyAmplifierState = "miss";
+      delete tweet.dataset.miladyAmplifierDebug;
       applyMode(tweet);
       scheduleDelayedProcessVisibleTweets();
       return;
     }
 
     if (!avatar.currentSrc && !avatar.src) {
-      tweet.dataset.miladyShrinkifierState = "miss";
-      delete tweet.dataset.miladyShrinkifierDebug;
+      tweet.dataset.miladyAmplifierState = "miss";
+      delete tweet.dataset.miladyAmplifierDebug;
       applyMode(tweet);
       scheduleDelayedProcessVisibleTweets();
       return;
@@ -143,7 +143,7 @@ async function processTweet(tweet: HTMLElement): Promise<void> {
       revealed.delete(tweet);
     }
 
-    if (processed.get(tweet) === normalizedUrl && tweet.dataset.miladyShrinkifierState) {
+    if (processed.get(tweet) === normalizedUrl && tweet.dataset.miladyAmplifierState) {
       applyMode(tweet, normalizedUrl);
       return;
     }
@@ -162,20 +162,20 @@ async function processTweet(tweet: HTMLElement): Promise<void> {
       });
       revealed.delete(tweet);
       clearEffects(tweet);
-      delete tweet.dataset.miladyShrinkifier;
-      delete tweet.dataset.miladyShrinkifierState;
+      delete tweet.dataset.miladyAmplifier;
+      delete tweet.dataset.miladyAmplifierState;
       return;
     }
 
-    tweet.dataset.miladyShrinkifierState = "miss";
-    tweet.dataset.miladyShrinkifierDebug = "…";
+    tweet.dataset.miladyAmplifierState = "miss";
+    tweet.dataset.miladyAmplifierDebug = "…";
     applyMode(tweet, normalizedUrl);
     incrementStat("tweetsScanned");
     const result = await detectAvatar(avatar, normalizedUrl);
     if (result.debugLabel) {
-      tweet.dataset.miladyShrinkifierDebug = result.debugLabel;
+      tweet.dataset.miladyAmplifierDebug = result.debugLabel;
     } else {
-      delete tweet.dataset.miladyShrinkifierDebug;
+      delete tweet.dataset.miladyAmplifierDebug;
     }
     recordCollectedAvatar({
       normalizedUrl,
@@ -188,8 +188,8 @@ async function processTweet(tweet: HTMLElement): Promise<void> {
       result,
     });
     if (result.matched) {
-      tweet.dataset.miladyShrinkifier = result.source ?? "match";
-      tweet.dataset.miladyShrinkifierState = "match";
+      tweet.dataset.miladyAmplifier = result.source ?? "match";
+      tweet.dataset.miladyAmplifierState = "match";
       incrementMatchStats(result);
       if (author) {
         recordMatchedAccount(author.handle, author.displayName);
@@ -200,18 +200,18 @@ async function processTweet(tweet: HTMLElement): Promise<void> {
 
     revealed.delete(tweet);
     clearEffects(tweet);
-    delete tweet.dataset.miladyShrinkifier;
-    tweet.dataset.miladyShrinkifierState = "miss";
+    delete tweet.dataset.miladyAmplifier;
+    tweet.dataset.miladyAmplifierState = "miss";
     if (result.debugLabel) {
-      tweet.dataset.miladyShrinkifierDebug = result.debugLabel;
+      tweet.dataset.miladyAmplifierDebug = result.debugLabel;
     }
     applyMode(tweet, normalizedUrl);
   } catch (error) {
     console.error("Milady post processing failed", error);
     clearEffects(tweet);
-    delete tweet.dataset.miladyShrinkifier;
-    tweet.dataset.miladyShrinkifierState = "miss";
-    tweet.dataset.miladyShrinkifierDebug = "err";
+    delete tweet.dataset.miladyAmplifier;
+    tweet.dataset.miladyAmplifierState = "miss";
+    tweet.dataset.miladyAmplifierDebug = "err";
     applyMode(tweet);
   }
 }
@@ -319,7 +319,7 @@ function findAuthor(tweet: HTMLElement): { handle: string; displayName: string |
 
 function applyMode(tweet: HTMLElement, normalizedUrl?: string): void {
   clearVisualState(tweet);
-  const isMatch = tweet.dataset.miladyShrinkifierState === "match";
+  const isMatch = tweet.dataset.miladyAmplifierState === "match";
 
   switch (settings.mode) {
     case "hide":
@@ -336,6 +336,21 @@ function applyMode(tweet: HTMLElement, normalizedUrl?: string): void {
       }
       applyHiddenState(tweet);
       return;
+    case "only-milady": {
+      if (isMatch) {
+        revealed.delete(tweet);
+        clearPlaceholder(tweet);
+        tweet.style.display = "";
+        return;
+      }
+      if (normalizedUrl && revealed.get(tweet) === normalizedUrl) {
+        clearPlaceholder(tweet);
+        tweet.style.display = "";
+        return;
+      }
+      applyHiddenState(tweet, true);
+      return;
+    }
     case "fade":
       if (!isMatch) {
         clearPlaceholder(tweet);
@@ -343,7 +358,7 @@ function applyMode(tweet: HTMLElement, normalizedUrl?: string): void {
         return;
       }
       clearPlaceholder(tweet);
-      tweet.dataset.miladyShrinkifierEffect = "fade";
+      tweet.dataset.miladyAmplifierEffect = "fade";
       tweet.style.display = "";
       return;
     case "debug":
@@ -360,31 +375,44 @@ function applyMode(tweet: HTMLElement, normalizedUrl?: string): void {
 
 function clearEffects(tweet: HTMLElement): void {
   clearVisualState(tweet);
-  delete tweet.dataset.miladyShrinkifierDebug;
+  delete tweet.dataset.miladyAmplifierDebug;
   clearPlaceholder(tweet);
   tweet.style.display = "";
 }
 
 function clearVisualState(tweet: HTMLElement): void {
-  delete tweet.dataset.miladyShrinkifierEffect;
+  delete tweet.dataset.miladyAmplifierEffect;
 }
 
 function applyDebugState(tweet: HTMLElement): void {
-  if (tweet.dataset.miladyShrinkifierState === "match") {
-    tweet.dataset.miladyShrinkifierEffect = "debug-match";
+  if (tweet.dataset.miladyAmplifierState === "match") {
+    tweet.dataset.miladyAmplifierEffect = "debug-match";
     return;
   }
 
-  tweet.dataset.miladyShrinkifierEffect = "debug-miss";
+  tweet.dataset.miladyAmplifierEffect = "debug-miss";
 }
 
-function applyHiddenState(tweet: HTMLElement): void {
+function applyHiddenState(tweet: HTMLElement, inverse = false): void {
   let placeholder = placeholders.get(tweet);
+  if (placeholder && placeholder.dataset.inverse !== String(inverse)) {
+    placeholder.remove();
+    placeholders.delete(tweet);
+    placeholder = undefined;
+  }
   if (!placeholder) {
+    const bodyStyles = getComputedStyle(document.body);
+    const bg = bodyStyles.backgroundColor || "rgb(255, 255, 255)";
+    const fg = bodyStyles.color || "rgb(83, 100, 113)";
     placeholder = document.createElement("div");
-    placeholder.className = "milady-shrinkifier-placeholder";
+    placeholder.className = "milady-amplifier-placeholder";
+    placeholder.dataset.inverse = String(inverse);
+    placeholder.style.background = bg;
+    placeholder.style.color = fg;
+    placeholder.style.borderBottom = `1px solid ${fg.replace(/rgb\(/, "rgba(").replace(/\)/, ", 0.15)")}`;
     const label = document.createElement("span");
-    label.textContent = "Milady post hidden";
+    label.style.opacity = "0.6";
+    label.textContent = inverse ? "Non-Milady post hidden" : "Milady post hidden";
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = "Show";
@@ -423,20 +451,20 @@ function injectStyles(): void {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    [data-milady-shrinkifier-effect="fade"] {
+    [data-milady-amplifier-effect="fade"] {
       opacity: 0.5;
     }
 
-    [data-milady-shrinkifier-effect="debug-match"] {
+    [data-milady-amplifier-effect="debug-match"] {
       position: relative !important;
     }
 
-    [data-milady-shrinkifier-effect="debug-miss"] {
+    [data-milady-amplifier-effect="debug-miss"] {
       position: relative !important;
     }
 
-    [data-milady-shrinkifier-effect="debug-match"]::after,
-    [data-milady-shrinkifier-effect="debug-miss"]::after {
+    [data-milady-amplifier-effect="debug-match"]::after,
+    [data-milady-amplifier-effect="debug-miss"]::after {
       content: "";
       position: absolute;
       inset: 0;
@@ -446,9 +474,9 @@ function injectStyles(): void {
       z-index: 2147483647;
     }
 
-    [data-milady-shrinkifier-effect="debug-match"]::before,
-    [data-milady-shrinkifier-effect="debug-miss"]::before {
-      content: attr(data-milady-shrinkifier-debug);
+    [data-milady-amplifier-effect="debug-match"]::before,
+    [data-milady-amplifier-effect="debug-miss"]::before {
+      content: attr(data-milady-amplifier-debug);
       position: absolute;
       top: 6px;
       right: 6px;
@@ -464,15 +492,15 @@ function injectStyles(): void {
       border-radius: 0;
     }
 
-    [data-milady-shrinkifier-effect="debug-match"]::after {
+    [data-milady-amplifier-effect="debug-match"]::after {
       border-color: rgba(231, 76, 60, 0.95);
     }
 
-    [data-milady-shrinkifier-effect="debug-miss"]::after {
+    [data-milady-amplifier-effect="debug-miss"]::after {
       border-color: rgba(46, 204, 113, 0.75);
     }
 
-    .milady-shrinkifier-placeholder {
+    .milady-amplifier-placeholder {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -480,16 +508,13 @@ function injectStyles(): void {
       min-height: 52px;
       padding: 12px 16px;
       margin: 0;
-      border-bottom: 1px solid rgb(239, 243, 244);
-      background: rgb(255, 255, 255);
-      color: rgb(83, 100, 113);
       font-family: TwitterChirp, -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 15px;
       font-weight: 400;
       line-height: 20px;
     }
 
-    .milady-shrinkifier-placeholder button {
+    .milady-amplifier-placeholder button {
       border: 0;
       padding: 0;
       background: transparent;
@@ -498,7 +523,7 @@ function injectStyles(): void {
       cursor: pointer;
     }
 
-    .milady-shrinkifier-placeholder button:hover {
+    .milady-amplifier-placeholder button:hover {
       text-decoration: underline;
     }
   `;
@@ -651,7 +676,7 @@ async function scoreWithOnnx(
 }
 
 function isFilterMode(value: unknown): value is ExtensionSettings["mode"] {
-  return value === "off" || value === "hide" || value === "fade" || value === "debug";
+  return value === "off" || value === "hide" || value === "fade" || value === "only-milady" || value === "debug";
 }
 
 function incrementMatchStats(result: DetectionResult): void {

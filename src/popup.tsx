@@ -34,6 +34,7 @@ const MODE_OPTIONS: Array<{ value: FilterMode; label: string; note: string }> = 
   { value: "off", label: "Off", note: "Do nothing. Show everything." },
   { value: "hide", label: "Hide", note: "Collapse matched posts. Tap to reveal." },
   { value: "fade", label: "Fade", note: "50% opacity. Present but diminished." },
+  { value: "only-milady", label: "Only Milady", note: "Hide everything except Milady posts." },
   { value: "debug", label: "Debug", note: "Show detection markers and scores." },
 ];
 
@@ -489,7 +490,7 @@ function App() {
       <style>{styles}</style>
       <main class="popup">
         <header class="header">
-          <h1>Milady Shrinkifier</h1>
+          <h1>Milady Amplifier</h1>
         </header>
 
         <nav class="tabs" aria-label="Popup sections">
@@ -671,7 +672,7 @@ function App() {
 render(() => <App />, document.getElementById("app")!);
 
 function getStoredMode(value: unknown): FilterMode {
-  if (value === "hide" || value === "fade" || value === "debug" || value === "off") {
+  if (value === "hide" || value === "fade" || value === "only-milady" || value === "debug" || value === "off") {
     return value;
   }
   return DEFAULT_SETTINGS.mode;
@@ -890,7 +891,7 @@ function exportCollectedAvatars(collectedAvatars: CollectedAvatarMap, whitelistH
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `milady-shrinkifier-avatars-${timestampForFilename(new Date())}.json`;
+  anchor.download = `milady-amplifier-avatars-${timestampForFilename(new Date())}.json`;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }

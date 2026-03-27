@@ -1,4 +1,4 @@
-# Milady Shrinkifier
+# Milady Amplifier
 
 *protecting your timeline from the egregore since 2026*
 
@@ -25,7 +25,7 @@ Everything runs locally. No server calls, no telemetry, nothing leaves your brow
 
 There is no Chrome Web Store release. Install from GitHub Releases instead:
 
-1. Download the latest `milady-shrinkifier-vX.Y.Z-unpacked.zip` from Releases.
+1. Download the latest `milady-amplifier-vX.Y.Z-unpacked.zip` from Releases.
 2. Unzip it somewhere permanent on disk.
 3. Open `chrome://extensions`.
 4. Enable `Developer mode`.

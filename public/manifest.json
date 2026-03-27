@@ -1,12 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Milady Shrinkifier",
-  "version": "0.2.2",
+  "name": "Milady Amplifier",
+  "version": "0.3.0",
   "description": "Detects Milady avatars on your X timeline using an on-device classifier.",
   "permissions": ["storage", "unlimitedStorage"],
   "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png"
+    }
   },
   "content_scripts": [
     {

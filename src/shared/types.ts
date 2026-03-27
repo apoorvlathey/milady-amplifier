@@ -1,4 +1,4 @@
-export type FilterMode = "off" | "hide" | "fade" | "debug";
+export type FilterMode = "off" | "hide" | "fade" | "only-milady" | "debug";
 
 export interface ExtensionSettings {
   mode: FilterMode;

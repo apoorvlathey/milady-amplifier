@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-app = FastAPI(title="Milady Shrinkifier Review")
+app = FastAPI(title="Milady Amplifier Review")
 
 
 @app.get("/")
