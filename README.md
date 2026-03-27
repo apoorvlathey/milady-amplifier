@@ -48,24 +48,6 @@ Some people find that a significant percentage of their timeline consists of acc
 
 All detection happens on-device using a bundled ONNX model. No images are uploaded anywhere. Collected data is stored in local browser storage and is never transmitted unless you explicitly export it.
 
-## Local Development
-
-Useful commands:
-
-```bash
-pnpm run build
-pnpm run typecheck
-pnpm run test
-pnpm run check:pfp -- <avatar-url>
-```
-
-For live browser debugging with a persistent local Chrome profile:
-
-```bash
-pnpm run debug:chrome:launch-local-profile
-pnpm run debug:chrome:attach
-```
-
 ## Data and Training Workflow
 
 The extension can export collected avatars as JSON manifests. The training pipeline ingests those exports into a local SQLite catalog and keeps all derived state under the ignored `cache/` tree.
@@ -112,6 +94,7 @@ Typical loop:
 
 ## Notes
 
+- Development and debugging commands live in `DEVELOPMENT.md`.
 - Runtime model artifacts live in `public/models/` and `public/generated/`.
 - Training runs, labels, downloaded avatars, and dataset manifests live under ignored `cache/`.
 - The review app supports both individual labeling and 9-up batch labeling.
