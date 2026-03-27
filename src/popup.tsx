@@ -288,9 +288,7 @@ const styles = `
 
   .account-row[data-whitelisted="true"] .account-handle,
   .account-row[data-whitelisted="true"] .account-note {
-    text-decoration: line-through;
-    text-decoration-thickness: 1.5px;
-    color: rgba(247, 241, 232, 0.42);
+    color: var(--good);
   }
 
   .account-handle {
