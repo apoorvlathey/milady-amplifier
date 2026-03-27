@@ -1,5 +1,3 @@
-import type { CandidateScore, HashEntry } from "./types";
-
 const POPCOUNT = new Uint8Array(256);
 for (let index = 0; index < 256; index += 1) {
   let value = index;
@@ -19,34 +17,6 @@ export function normalizeProfileImageUrl(source: string): string {
     "_400x400$2",
   );
   return url.toString();
-}
-
-export function findBestCandidate(hash: string, averageColor: [number, number, number], entries: HashEntry[]): CandidateScore {
-  let bestDistance = Number.POSITIVE_INFINITY;
-  let bestEntry = entries[0];
-
-  for (const entry of entries) {
-    const distance = hammingDistance(hash, entry.hash);
-    if (distance > bestDistance) {
-      continue;
-    }
-
-    if (distance === bestDistance) {
-      const currentColor = colorDistance(averageColor, entry.averageColor);
-      const bestColor = colorDistance(averageColor, bestEntry.averageColor);
-      if (currentColor >= bestColor) {
-        continue;
-      }
-    }
-
-    bestDistance = distance;
-    bestEntry = entry;
-  }
-
-  return {
-    distance: bestDistance,
-    entry: bestEntry,
-  };
 }
 
 export function colorDistance(left: [number, number, number], right: [number, number, number]): number {

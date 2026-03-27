@@ -869,9 +869,7 @@ function normalizeCollectedAvatars(value: unknown): CollectedAvatarMap {
       heuristicMatch:
         typeof candidate.heuristicMatch === "boolean" ? candidate.heuristicMatch : null,
       heuristicSource:
-        candidate.heuristicSource === "phash" || candidate.heuristicSource === "onnx"
-          ? candidate.heuristicSource
-          : null,
+        candidate.heuristicSource === "onnx" ? candidate.heuristicSource : null,
       heuristicScore:
         typeof candidate.heuristicScore === "number" && Number.isFinite(candidate.heuristicScore)
           ? candidate.heuristicScore

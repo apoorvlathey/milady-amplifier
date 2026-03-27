@@ -54,4 +54,4 @@ All detection happens on-device using a bundled ONNX model. No images are upload
 - Runtime model artifacts live in `public/models/` and `public/generated/`.
 - Training runs, labels, downloaded avatars, and dataset manifests live under ignored `cache/`.
 - The review app supports both individual labeling and 9-up batch labeling.
-- The extension runtime is ONNX-only; older hash-generation scripts remain only for offline data work.
+- The extension runtime is ONNX-only.

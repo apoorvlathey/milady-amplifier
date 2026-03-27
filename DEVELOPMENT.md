@@ -55,10 +55,9 @@ pnpm run download:images
 pnpm run download:images:aria2
 ```
 
-Generate the legacy local assets:
+Generate the legacy local model assets:
 
 ```bash
-pnpm run generate:hashes
 pnpm run generate:model
 pnpm run prepare:assets
 ```

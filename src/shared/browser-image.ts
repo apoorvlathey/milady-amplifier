@@ -27,16 +27,6 @@ export async function computeBrowserImageFeatures(
   image: HTMLImageElement,
   variant: CropVariant = "center",
 ): Promise<RuntimeImageFeatures> {
-  const hashCanvas = document.createElement("canvas");
-  hashCanvas.width = 9;
-  hashCanvas.height = 8;
-  const hashContext = hashCanvas.getContext("2d", { willReadFrequently: true });
-  if (!hashContext) {
-    throw new Error("Unable to create 2D context");
-  }
-  drawCoverImage(hashContext, image, 9, 8, variant);
-  const hashPixels = hashContext.getImageData(0, 0, 9, 8).data;
-
   const featureCanvas = document.createElement("canvas");
   featureCanvas.width = 32;
   featureCanvas.height = 32;
@@ -59,8 +49,6 @@ export async function computeBrowserImageFeatures(
     .getImageData(0, 0, CLASSIFIER_MODEL_INPUT_SIZE, CLASSIFIER_MODEL_INPUT_SIZE).data;
 
   return {
-    hash: computeDhashFromRgba(hashPixels, 9, 8),
-    averageColor: computeAverageColorFromRgba(hashPixels),
     legacyFeatures: computeLegacyModelFeatures(modelPixels),
     modelTensor: computeClassifierTensor(classifierPixels),
     modelShape: [1, CLASSIFIER_MODEL_CHANNELS, CLASSIFIER_MODEL_INPUT_SIZE, CLASSIFIER_MODEL_INPUT_SIZE],
@@ -84,40 +72,6 @@ function drawCoverImage(
 
   context.clearRect(0, 0, targetWidth, targetHeight);
   context.drawImage(image, offsetX, offsetY, scaledWidth, scaledHeight);
-}
-
-function computeAverageColorFromRgba(buffer: Uint8ClampedArray): [number, number, number] {
-  let red = 0;
-  let green = 0;
-  let blue = 0;
-  const pixels = buffer.length / 4;
-  for (let offset = 0; offset < buffer.length; offset += 4) {
-    red += buffer[offset];
-    green += buffer[offset + 1];
-    blue += buffer[offset + 2];
-  }
-  return [
-    Math.round(red / pixels),
-    Math.round(green / pixels),
-    Math.round(blue / pixels),
-  ];
-}
-
-function computeDhashFromRgba(buffer: Uint8ClampedArray, width: number, height: number): string {
-  let bits = "";
-  for (let row = 0; row < height; row += 1) {
-    for (let column = 0; column < width - 1; column += 1) {
-      const left = rgbaToGray(buffer, row * width + column);
-      const right = rgbaToGray(buffer, row * width + column + 1);
-      bits += left > right ? "1" : "0";
-    }
-  }
-  return bitsToHex(bits);
-}
-
-function rgbaToGray(buffer: Uint8ClampedArray, pixelIndex: number): number {
-  const offset = pixelIndex * 4;
-  return Math.round(buffer[offset] * 0.299 + buffer[offset + 1] * 0.587 + buffer[offset + 2] * 0.114);
 }
 
 function computeLegacyModelFeatures(buffer: Uint8ClampedArray): number[] {
@@ -149,13 +103,4 @@ function computeClassifierTensor(buffer: Uint8ClampedArray): number[] {
   }
 
   return tensor;
-}
-
-function bitsToHex(bits: string): string {
-  const bytes: string[] = [];
-  for (let index = 0; index < bits.length; index += 8) {
-    const byte = Number.parseInt(bits.slice(index, index + 8), 2);
-    bytes.push(byte.toString(16).padStart(2, "0"));
-  }
-  return bytes.join("");
 }

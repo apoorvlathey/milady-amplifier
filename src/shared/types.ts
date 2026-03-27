@@ -37,28 +37,13 @@ export interface CollectedAvatar {
   exampleNotificationUrl: string | null;
   exampleTweetUrl: string | null;
   heuristicMatch: boolean | null;
-  heuristicSource: "phash" | "onnx" | null;
+  heuristicSource: "onnx" | null;
   heuristicScore: number | null;
   heuristicTokenId: number | null;
   whitelisted: boolean;
 }
 
 export type CollectedAvatarMap = Record<string, CollectedAvatar>;
-
-export interface HashEntry {
-  tokenId: number;
-  variant: string;
-  hash: string;
-  averageColor: [number, number, number];
-}
-
-export interface HashDatabase {
-  collection: string;
-  algorithm: string;
-  generatedAt: string;
-  hashes: HashEntry[];
-  skippedTokenIds?: number[];
-}
 
 export interface ModelMetadata {
   architecture?: string;
@@ -74,14 +59,9 @@ export interface ModelMetadata {
   inputLength?: number;
 }
 
-export interface CandidateScore {
-  distance: number;
-  entry: HashEntry;
-}
-
 export interface DetectionResult {
   matched: boolean;
-  source: "phash" | "onnx" | null;
+  source: "onnx" | null;
   score: number | null;
   tokenId: number | null;
   debugLabel?: string | null;
