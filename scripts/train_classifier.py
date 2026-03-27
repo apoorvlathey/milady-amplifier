@@ -88,11 +88,23 @@ def main() -> None:
     stale_epochs = 0
     training_started_at = perf_counter()
     completed_epoch_durations: list[float] = []
+    global_step = 0
 
     for epoch in range(1, args.epochs + 1):
         print(f"[epoch {epoch}/{args.epochs}] start", flush=True)
         epoch_started_at = perf_counter()
-        train_loss = run_epoch(model, train_loader, criterion, optimizer, device, epoch, args.epochs, args.log_every)
+        train_loss, global_step = run_epoch(
+            model,
+            train_loader,
+            criterion,
+            optimizer,
+            device,
+            epoch,
+            args.epochs,
+            args.log_every,
+            wandb_run,
+            global_step,
+        )
         val_probabilities, val_labels = evaluate(model, val_loader, device)
         threshold, threshold_metrics = choose_threshold(val_probabilities, val_labels, args.precision_floor)
         epoch_duration_seconds = perf_counter() - epoch_started_at
@@ -111,6 +123,7 @@ def main() -> None:
             wandb.log(
                 {
                     "epoch": epoch,
+                    "trainer/global_step": global_step,
                     "train/loss": train_loss,
                     "val/precision": threshold_metrics["precision"],
                     "val/recall": threshold_metrics["recall"],
@@ -266,6 +279,16 @@ def init_wandb(
         job_type="train-classifier",
         config=config,
     )
+    run.define_metric("epoch")
+    run.define_metric("trainer/global_step")
+    run.define_metric("train/*", step_metric="trainer/global_step")
+    run.define_metric("val/*", step_metric="epoch")
+    run.define_metric("test/*", step_metric="epoch")
+    run.define_metric("best/*", step_metric="epoch")
+    run.define_metric("timing/batch_elapsed_seconds", step_metric="trainer/global_step")
+    run.define_metric("timing/epoch_eta_seconds", step_metric="trainer/global_step")
+    run.define_metric("timing/epoch_seconds", step_metric="epoch")
+    run.define_metric("timing/total_elapsed_seconds", step_metric="epoch")
     print(
         f"[wandb] enabled project={args.wandb_project}"
         + (f" entity={args.wandb_entity}" if args.wandb_entity else "")
@@ -301,7 +324,9 @@ def run_epoch(
     epoch: int,
     total_epochs: int,
     log_every: int,
-) -> float:
+    wandb_run: wandb.sdk.wandb_run.Run | None,
+    global_step_base: int,
+) -> tuple[float, int]:
     model.train()
     total_loss = 0.0
     total_items = 0
@@ -322,13 +347,25 @@ def run_epoch(
             elapsed_seconds = perf_counter() - epoch_started_at
             average_batch_seconds = elapsed_seconds / max(1, batch_index)
             epoch_eta_seconds = average_batch_seconds * max(0, total_batches - batch_index)
+            global_step = global_step_base + batch_index
             print(
                 f"[epoch {epoch}/{total_epochs}] batch {batch_index}/{total_batches} "
                 f"loss={loss.item():.4f} avg_loss={average_loss:.4f} "
                 f"elapsed={format_duration(elapsed_seconds)} eta={format_duration(epoch_eta_seconds)}",
                 flush=True,
             )
-    return total_loss / max(1, total_items)
+            if wandb_run is not None:
+                wandb.log(
+                    {
+                        "epoch": epoch,
+                        "trainer/global_step": global_step,
+                        "train/batch_loss": float(loss.item()),
+                        "train/batch_avg_loss": average_loss,
+                        "timing/batch_elapsed_seconds": elapsed_seconds,
+                        "timing/epoch_eta_seconds": epoch_eta_seconds,
+                    }
+                )
+    return total_loss / max(1, total_items), global_step_base + total_batches
 
 
 def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> tuple[list[float], list[int]]:
