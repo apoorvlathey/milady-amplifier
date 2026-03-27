@@ -280,7 +280,7 @@ function findAuthor(tweet: HTMLElement): { handle: string; displayName: string |
 }
 
 function applyMode(tweet: HTMLElement): void {
-  clearVisualClasses(tweet);
+  clearVisualState(tweet);
   const isMatch = tweet.dataset.miladyShrinkifierState === "match";
 
   switch (settings.mode) {
@@ -299,7 +299,7 @@ function applyMode(tweet: HTMLElement): void {
         return;
       }
       clearPlaceholder(tweet);
-      tweet.classList.add("milady-shrinkifier-fade");
+      tweet.dataset.miladyShrinkifierEffect = "fade";
       tweet.style.display = "";
       return;
     case "debug":
@@ -315,26 +315,22 @@ function applyMode(tweet: HTMLElement): void {
 }
 
 function clearEffects(tweet: HTMLElement): void {
-  clearVisualClasses(tweet);
+  clearVisualState(tweet);
   clearPlaceholder(tweet);
   tweet.style.display = "";
 }
 
-function clearVisualClasses(tweet: HTMLElement): void {
-  tweet.classList.remove(
-    "milady-shrinkifier-fade",
-    "milady-shrinkifier-debug-match",
-    "milady-shrinkifier-debug-miss",
-  );
+function clearVisualState(tweet: HTMLElement): void {
+  delete tweet.dataset.miladyShrinkifierEffect;
 }
 
 function applyDebugState(tweet: HTMLElement): void {
   if (tweet.dataset.miladyShrinkifierState === "match") {
-    tweet.classList.add("milady-shrinkifier-debug-match");
+    tweet.dataset.miladyShrinkifierEffect = "debug-match";
     return;
   }
 
-  tweet.classList.add("milady-shrinkifier-debug-miss");
+  tweet.dataset.miladyShrinkifierEffect = "debug-miss";
 }
 
 function applyHiddenState(tweet: HTMLElement): void {
@@ -378,18 +374,35 @@ function injectStyles(): void {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    .milady-shrinkifier-fade {
+    [data-milady-shrinkifier-effect="fade"] {
       opacity: 0.5;
     }
 
-    .milady-shrinkifier-debug-match {
-      box-shadow: inset 0 0 0 2px rgba(231, 76, 60, 0.95);
-      background-image: linear-gradient(rgba(231, 76, 60, 0.08), rgba(231, 76, 60, 0.08));
+    [data-milady-shrinkifier-effect="debug-match"] {
+      position: relative !important;
     }
 
-    .milady-shrinkifier-debug-miss {
-      box-shadow: inset 0 0 0 2px rgba(46, 204, 113, 0.75);
-      background-image: linear-gradient(rgba(46, 204, 113, 0.04), rgba(46, 204, 113, 0.04));
+    [data-milady-shrinkifier-effect="debug-miss"] {
+      position: relative !important;
+    }
+
+    [data-milady-shrinkifier-effect="debug-match"]::after,
+    [data-milady-shrinkifier-effect="debug-miss"]::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 2px solid transparent;
+      border-radius: 0 !important;
+      pointer-events: none;
+      z-index: 2147483647;
+    }
+
+    [data-milady-shrinkifier-effect="debug-match"]::after {
+      border-color: rgba(231, 76, 60, 0.95);
+    }
+
+    [data-milady-shrinkifier-effect="debug-miss"]::after {
+      border-color: rgba(46, 204, 113, 0.75);
     }
 
     .milady-shrinkifier-placeholder {

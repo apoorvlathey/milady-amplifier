@@ -13,55 +13,68 @@ const styles = document.createElement("style");
 styles.textContent = `
   :root {
     color-scheme: dark;
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
   }
 
   body {
     margin: 0;
-    background: linear-gradient(160deg, #120f17 0%, #23122d 100%);
-    color: #f5f3ff;
-    min-width: 280px;
+    background:
+      radial-gradient(circle at top right, rgba(255, 109, 74, 0.18), transparent 34%),
+      linear-gradient(180deg, #15121b 0%, #0e0b12 100%);
+    color: #f7f1e8;
+    min-width: 300px;
   }
 
   .popup {
-    padding: 18px 16px;
+    padding: 18px 16px 14px;
   }
 
   h1 {
-    margin: 0 0 8px;
-    font-size: 18px;
+    margin: 0 0 6px;
+    font-size: 19px;
+    font-weight: 650;
   }
 
   .lede,
   .footnote {
     margin: 0;
-    color: #d8d1e8;
-    font-size: 13px;
+    color: rgba(247, 241, 232, 0.7);
+    font-size: 12px;
     line-height: 1.5;
+  }
+
+  .section-note {
+    margin: 0 0 10px;
+    color: rgba(247, 241, 232, 0.56);
+    font-size: 11px;
+    line-height: 1.45;
   }
 
   .mode-form {
     display: grid;
-    gap: 10px;
-    margin: 16px 0;
+    gap: 0;
+    margin: 18px 0 14px;
+    border-top: 1px solid rgba(247, 241, 232, 0.12);
   }
 
   .mode-form label {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
-    border: 1px solid rgba(216, 209, 232, 0.15);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.04);
+    padding: 10px 2px;
+    border-bottom: 1px solid rgba(247, 241, 232, 0.08);
+    font-size: 13px;
   }
 
-  .stats {
-    margin: 18px 0 14px;
-    padding: 14px 12px;
-    border: 1px solid rgba(216, 209, 232, 0.15);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.05);
+  .mode-form input {
+    accent-color: #ff6d4a;
+  }
+
+  .stats,
+  .accounts {
+    margin: 0;
+    padding: 14px 0 0;
+    border-top: 1px solid rgba(247, 241, 232, 0.12);
   }
 
   .stats-header {
@@ -69,31 +82,31 @@ styles.textContent = `
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   h2 {
     margin: 0;
-    font-size: 13px;
-    letter-spacing: 0.08em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #d8d1e8;
+    color: rgba(247, 241, 232, 0.56);
   }
 
   #reset-stats {
     border: 0;
-    border-radius: 999px;
-    padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.12);
-    color: #f5f3ff;
+    padding: 0;
+    background: transparent;
+    color: rgba(247, 241, 232, 0.7);
     font: inherit;
+    font-size: 12px;
     cursor: pointer;
   }
 
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 12px;
+    gap: 12px 16px;
     margin: 0;
   }
 
@@ -102,43 +115,37 @@ styles.textContent = `
   }
 
   .stats-grid dt {
-    color: #b8b1ca;
-    font-size: 11px;
-    margin: 0 0 3px;
+    color: rgba(247, 241, 232, 0.5);
+    font-size: 10px;
+    margin: 0 0 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .stats-grid dd {
     margin: 0;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 620;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .accounts {
-    margin: 18px 0 14px;
-    padding: 14px 12px;
-    border: 1px solid rgba(216, 209, 232, 0.15);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
   .accounts-list {
     display: grid;
-    gap: 10px;
-    margin-top: 12px;
+    gap: 0;
   }
 
   .account-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: center;
-    padding: 10px 12px;
-    border: 1px solid rgba(216, 209, 232, 0.12);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.04);
+    display: block;
+    width: 100%;
+    padding: 9px 0;
+    border: 0;
+    border-bottom: 1px solid rgba(247, 241, 232, 0.08);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
   }
 
   .account-meta {
@@ -148,28 +155,25 @@ styles.textContent = `
   .account-handle {
     margin: 0;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 620;
   }
 
   .account-subline {
-    margin: 4px 0 0;
-    color: #b8b1ca;
+    margin: 3px 0 0;
+    color: rgba(247, 241, 232, 0.54);
     font-size: 12px;
   }
 
-  .account-action {
-    border: 0;
-    border-radius: 999px;
-    padding: 7px 10px;
-    background: rgba(255, 255, 255, 0.12);
-    color: #f5f3ff;
-    font: inherit;
-    cursor: pointer;
-    white-space: nowrap;
+  .account-row[data-whitelisted="true"] .account-handle,
+  .account-row[data-whitelisted="true"] .account-subline {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    color: rgba(247, 241, 232, 0.42);
   }
 
-  .account-action[data-whitelisted="true"] {
-    background: rgba(46, 204, 113, 0.18);
+  .account-row:focus-visible {
+    outline: 1px solid rgba(255, 109, 74, 0.9);
+    outline-offset: 2px;
   }
 `;
 document.head.append(styles);
@@ -220,11 +224,16 @@ async function init(): Promise<void> {
 
   accountsList.addEventListener("click", async (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLButtonElement)) {
+    if (!(target instanceof HTMLElement)) {
       return;
     }
 
-    const handle = target.dataset.handle;
+    const row = target.closest<HTMLElement>("[data-handle]");
+    if (!row) {
+      return;
+    }
+
+    const handle = row.dataset.handle;
     if (!handle) {
       return;
     }
@@ -327,8 +336,15 @@ function renderMatchedAccounts(
   accountsList.replaceChildren();
 
   for (const account of entries) {
-    const row = document.createElement("div");
+    const row = document.createElement("button");
+    const isWhitelisted = whitelistHandles.includes(account.handle);
+    row.type = "button";
     row.className = "account-row";
+    row.dataset.handle = account.handle;
+    row.dataset.whitelisted = String(isWhitelisted);
+    row.title = isWhitelisted
+      ? `@${account.handle} bypasses the filter`
+      : `Click to let @${account.handle} bypass the filter`;
 
     const meta = document.createElement("div");
     meta.className = "account-meta";
@@ -339,18 +355,12 @@ function renderMatchedAccounts(
 
     const subline = document.createElement("p");
     subline.className = "account-subline";
-    subline.textContent = `${formatNumber(account.postsMatched)} matched posts`;
+    subline.textContent = isWhitelisted
+      ? `${formatNumber(account.postsMatched)} matched posts, bypassed`
+      : `${formatNumber(account.postsMatched)} matched posts`;
 
     meta.append(handle, subline);
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "account-action";
-    button.dataset.handle = account.handle;
-    button.dataset.whitelisted = String(whitelistHandles.includes(account.handle));
-    button.textContent = whitelistHandles.includes(account.handle) ? "Whitelisted" : "Whitelist";
-
-    row.append(meta, button);
+    row.append(meta);
     accountsList.append(row);
   }
 }
