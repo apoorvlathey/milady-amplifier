@@ -48,53 +48,9 @@ Some people find that a significant percentage of their timeline consists of acc
 
 All detection happens on-device using a bundled ONNX model. No images are uploaded anywhere. Collected data is stored in local browser storage and is never transmitted unless you explicitly export it.
 
-## Data and Training Workflow
-
-The extension can export collected avatars as JSON manifests. The training pipeline ingests those exports into a local SQLite catalog and keeps all derived state under the ignored `cache/` tree.
-
-Typical loop:
-
-1. Ingest one or more exports:
-   ```bash
-   pnpm run ingest:avatars -- cache/milady-shrinkifier-avatars-<timestamp>.json
-   ```
-2. Download new avatar images:
-   ```bash
-   pnpm run download:avatars
-   ```
-3. Retry any failed downloads if needed:
-   ```bash
-   pnpm run download:avatars -- --retry-failed
-   ```
-4. Auto-label known positives from the current heuristic:
-   ```bash
-   pnpm run label:heuristic
-   ```
-5. Review and label avatars:
-   ```bash
-   pnpm run review:avatars
-   ```
-6. Materialize the train/val/test dataset:
-   ```bash
-   pnpm run build:dataset
-   ```
-7. Train a MobileNetV3-Small classifier:
-   ```bash
-   pnpm run train:classifier
-   ```
-8. Score the catalog for hard-negative mining:
-   ```bash
-   pnpm run score:classifier -- --run-id <run-id>
-   ```
-9. Export the trained classifier into the extension runtime:
-   ```bash
-   pnpm run export:classifier -- --run-id <run-id>
-   pnpm run build
-   ```
-
 ## Notes
 
-- Development and debugging commands live in `DEVELOPMENT.md`.
+- Development, debugging, and training workflow commands live in `DEVELOPMENT.md`.
 - Runtime model artifacts live in `public/models/` and `public/generated/`.
 - Training runs, labels, downloaded avatars, and dataset manifests live under ignored `cache/`.
 - The review app supports both individual labeling and 9-up batch labeling.

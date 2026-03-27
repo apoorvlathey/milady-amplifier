@@ -65,13 +65,19 @@ pnpm run prepare:assets
 
 ## Training Pipeline
 
+The extension exports collected avatars as JSON manifests. The offline pipeline ingests those exports into a local SQLite catalog under `cache/`, downloads avatar images, supports manual labeling, then trains and exports a MobileNetV3-Small classifier back into the extension runtime.
+
+Typical loop:
+
 ```bash
 pnpm run ingest:avatars -- cache/milady-shrinkifier-avatars-<timestamp>.json
 pnpm run download:avatars
+pnpm run download:avatars -- --retry-failed
 pnpm run label:heuristic
 pnpm run review:avatars
 pnpm run build:dataset
 pnpm run train:classifier
 pnpm run score:classifier -- --run-id <run-id>
 pnpm run export:classifier -- --run-id <run-id>
+pnpm run build
 ```
