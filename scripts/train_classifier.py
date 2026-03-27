@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 
 import torch
+import wandb
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -25,6 +27,9 @@ from mobilenet_common import (
 )
 from pipeline_common import MODEL_RUN_ROOT, SPLIT_ROOT
 
+DEFAULT_WANDB_PROJECT = "milady-shrinkifier"
+DEFAULT_WANDB_ENTITY = "banteg-"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a MobileNetV3-Small binary Milady classifier.")
@@ -37,6 +42,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--precision-floor", type=float, default=0.995)
     parser.add_argument("--run-id", default=datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ"))
     parser.add_argument("--cpu", action="store_true", help="Force CPU training even when MPS/CUDA is available.")
+    parser.add_argument(
+        "--wandb-project",
+        default=os.environ.get("WANDB_PROJECT", DEFAULT_WANDB_PROJECT),
+        help="Weights & Biases project name.",
+    )
+    parser.add_argument(
+        "--wandb-entity",
+        default=os.environ.get("WANDB_ENTITY", DEFAULT_WANDB_ENTITY),
+        help="Weights & Biases entity/user/team.",
+    )
+    parser.add_argument("--no-wandb", action="store_true", help="Disable Weights & Biases logging for this run.")
     return parser.parse_args()
 
 
@@ -61,6 +77,7 @@ def main() -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
 
     print_run_header(args, device, train_entries, val_entries, test_entries, run_dir)
+    wandb_run = init_wandb(args, device, train_entries, val_entries, test_entries, run_dir)
 
     best_state: dict[str, torch.Tensor] | None = None
     best_threshold = 0.995
@@ -90,6 +107,20 @@ def main() -> None:
                 "threshold": threshold,
             }
         )
+        if wandb_run is not None:
+            wandb.log(
+                {
+                    "epoch": epoch,
+                    "train/loss": train_loss,
+                    "val/precision": threshold_metrics["precision"],
+                    "val/recall": threshold_metrics["recall"],
+                    "val/f1": threshold_metrics["f1"],
+                    "val/threshold": threshold,
+                    "timing/epoch_seconds": epoch_duration_seconds,
+                    "timing/total_elapsed_seconds": perf_counter() - training_started_at,
+                },
+                step=epoch,
+            )
         improved = threshold_metrics["recall"] > best_recall
         stale_after_epoch = 0 if improved else stale_epochs + 1
         overall_eta_seconds = estimate_overall_eta(args.epochs, epoch, completed_epoch_durations)
@@ -157,6 +188,29 @@ def main() -> None:
         "checkpointPath": str(checkpoint_path),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True))
+    if wandb_run is not None:
+        wandb.log(
+            {
+                "best/epoch": best_epoch,
+                "best/threshold": best_threshold,
+                "best/val_precision": best_val_metrics["precision"],
+                "best/val_recall": best_val_metrics["recall"],
+                "best/val_f1": best_val_metrics["f1"],
+                "test/precision": test_metrics["precision"],
+                "test/recall": test_metrics["recall"],
+                "test/f1": test_metrics["f1"],
+                "test/accuracy": test_metrics["accuracy"],
+            }
+        )
+        summary_artifact = wandb.Artifact(f"{args.run_id}-summary", type="training-summary")
+        summary_artifact.add_file(local_path=str(run_dir / "summary.json"), name="summary.json")
+        summary_artifact.add_file(local_path=str(checkpoint_path), name="best.pt")
+        wandb_run.log_artifact(summary_artifact)
+        wandb_run.summary["checkpoint_path"] = str(checkpoint_path)
+        wandb_run.summary["run_dir"] = str(run_dir)
+        wandb_run.summary["best_epoch"] = best_epoch
+        wandb_run.summary["best_threshold"] = best_threshold
+        wandb_run.finish()
     print(
         "[done] "
         f"best_epoch={best_epoch} "
@@ -168,6 +222,57 @@ def main() -> None:
         flush=True,
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
+
+
+def init_wandb(
+    args: argparse.Namespace,
+    device: torch.device,
+    train_entries: list,
+    val_entries: list,
+    test_entries: list,
+    run_dir: Path,
+) -> wandb.sdk.wandb_run.Run | None:
+    if args.no_wandb:
+        print("[wandb] disabled via --no-wandb", flush=True)
+        return None
+    if not args.wandb_project:
+        print("[wandb] disabled because WANDB_PROJECT/--wandb-project is not set", flush=True)
+        return None
+    config = {
+        "run_id": args.run_id,
+        "architecture": "mobilenet_v3_small",
+        "device": device.type,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "log_every": args.log_every,
+        "learning_rate": args.learning_rate,
+        "weight_decay": args.weight_decay,
+        "patience": args.patience,
+        "precision_floor": args.precision_floor,
+        "train_size": len(train_entries),
+        "val_size": len(val_entries),
+        "test_size": len(test_entries),
+        "train_milady": sum(1 for entry in train_entries if entry.label == "milady"),
+        "train_not_milady": sum(1 for entry in train_entries if entry.label != "milady"),
+        "image_size": MODEL_IMAGE_SIZE,
+        "mean": MODEL_MEAN,
+        "std": MODEL_STD,
+        "artifacts_dir": str(run_dir),
+    }
+    run = wandb.init(
+        project=args.wandb_project,
+        entity=args.wandb_entity,
+        name=args.run_id,
+        job_type="train-classifier",
+        config=config,
+    )
+    print(
+        f"[wandb] enabled project={args.wandb_project}"
+        + (f" entity={args.wandb_entity}" if args.wandb_entity else "")
+        + (f" url={run.url}" if getattr(run, "url", None) else ""),
+        flush=True,
+    )
+    return run
 
 
 def choose_device(force_cpu: bool) -> torch.device:
