@@ -98,27 +98,48 @@ const styles = `
   }
 
   .tabs {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
     margin: 0 0 14px;
+    padding-bottom: 1px;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .tab {
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.02);
+    position: relative;
+    border: 0;
+    background: transparent;
     color: var(--text-soft);
-    padding: 8px 10px;
-    border-radius: 999px;
+    padding: 0 0 10px;
     font-size: 12px;
+    white-space: nowrap;
     cursor: pointer;
-    transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+    transition: color 120ms ease;
   }
 
   .tab[data-active="true"] {
-    border-color: rgba(255, 109, 74, 0.45);
-    background: var(--accent-soft);
     color: var(--text);
+  }
+
+  .tab::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: transparent;
+  }
+
+  .tab[data-active="true"]::after {
+    background: var(--accent);
   }
 
   .panel {
