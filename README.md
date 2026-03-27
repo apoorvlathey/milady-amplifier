@@ -6,23 +6,18 @@
 
 Some people find that a significant percentage of their timeline consists of accounts using aesthetically identical chibi avatars posting aesthetically identical content. This extension addresses that.
 
-## What It Does
+## How It Works
 
-The extension scans author avatars locally with a bundled ONNX classifier. When a match is found, you choose what happens:
+A bundled ONNX classifier scans avatars as you scroll. When it spots a match, you pick what happens:
 
-- `Hide` collapses matched posts behind a click-to-reveal row.
-- `Fade` renders matched posts at 50% opacity.
-- `Debug` shows visual markers and detector score badges.
-- `Off` does nothing.
+- **Hide** — collapsed behind a click-to-reveal row.
+- **Fade** — visible but at half opacity.
+- **Debug** — borders and confidence scores on every post.
+- **Off** — does nothing.
 
-Everything runs locally. No server calls, no telemetry, no data leaves your browser unless you explicitly export collected avatar data yourself.
+The popup tracks session stats (posts scanned, match rate, last sighting), keeps a list of detected accounts you can whitelist individually, and collects avatar data you can export for offline labeling.
 
-## Other Features
-
-- `Stats` shows live session counts for seen posts, matched posts, match rate, exemptions, errors, and last match time.
-- `Accounts` keeps a running list of caught handles, grouped into `Exempt` and `Caught`.
-- `Data` collects normalized avatar URLs and metadata for offline dataset building.
-- The `Export` action dumps collected avatars as JSON for labeling and model improvement.
+Everything runs locally. No server calls, no telemetry, nothing leaves your browser unless you explicitly export it.
 
 ## Install
 
@@ -43,10 +38,6 @@ To run it locally:
    pnpm run build
    ```
 4. Load `dist/` as an unpacked extension in Chrome.
-
-## Privacy
-
-All detection happens on-device using a bundled ONNX model. No images are uploaded anywhere. Collected data is stored in local browser storage and is never transmitted unless you explicitly export it.
 
 ## Notes
 
